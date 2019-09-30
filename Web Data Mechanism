@@ -1,0 +1,337 @@
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+import webbrowser
+from tkinter import *
+import urllib.request
+from tkinter.colorchooser import *
+from tkinter.filedialog import askopenfilename
+import re
+import os
+import read_ini_config
+from tkinter import ttk
+from tkinter import messagebox
+from selenium import webdriver
+from PIL import Image, ImageTk, ImageSequence
+
+# Setting structure of the browser window and variable declarations.
+root = Tk()
+root.wm_title("Web Data Mechanism")
+base_path = os.getcwd()
+root.iconbitmap(base_path + '\\images\\favicon.ico')
+root.state("zoomed")
+
+# read configurations
+chrome_web_driver = read_ini_config.read_config("DEFAULT", "ChromeWebDriver")
+
+url1 = 'http://www.gmail.com'
+url2 = 'http://www.yahoomail.com'
+url3 = 'http://www.youtube.com'
+url4 = 'http://www.facebook.com'
+url5 = 'http://www.github.com'
+url6 = 'http://www.linkedin.com'
+url7 = 'http://www.firefox.com'
+url8 = 'http://www.bing.com'
+url9 = 'http://www.yahoo.com'
+
+scrollbar = Scrollbar(root)
+scrollbar.pack(side=RIGHT, fill=Y)
+
+frame = Frame(root)
+frame.pack(side=BOTTOM)
+b1 = ttk.Button(frame, command=lambda aurl=url7: OpenUrl(aurl))
+b1.pack(side=LEFT)
+m1 = PhotoImage(file=base_path + "\\images\\firefox.png")
+b1.config(image=m1)
+tm1 = m1.subsample(3, 3)
+b1.config(image=tm1)
+b2 = ttk.Button(frame, command=lambda aurl=url8: OpenUrl(aurl))
+b2.pack(side=LEFT)
+m2 = PhotoImage(file=base_path + "\\images\\bing.png")
+b2.config(image=m2)
+tm2 = m2.subsample(6, 6)
+b2.config(image=tm2)
+b3 = ttk.Button(frame, command=lambda aurl=url9: OpenUrl(aurl))
+b3.pack(side=LEFT)
+m3 = PhotoImage(file=base_path + "\\images\\y.png")
+b3.config(image=m3)
+tm3 = m3.subsample(6, 6)
+b3.config(image=tm3)
+Label(root, text='Quick Links : ', font=("Helvetica", 16)).pack(side=BOTTOM)
+
+
+# This is used to open the apps specified in menu bar in our default browser.
+def OpenUrl(url):
+    webbrowser.open_new(url)
+
+
+# This is to list down all the list of entity of 51 states
+def run_state_list():
+    if entity_name_field.get() == "":
+        messagebox.showinfo("Enity Name Entry is Blank", "Please input Entity Name in the field.")
+        return
+    else:
+        with open(base_path + "\stateslist.txt", 'r') as fileHandle:
+            filecontents = fileHandle.readlines()
+            for line in filecontents:
+                states_tree_viewer.insert("", 'end', values=(entity_name_field.get(), line))
+            entity_name_field.delete(0, END)
+
+# entry on treeview
+def edit(event):
+
+    if field_tree_viewer.identify_region(event.x, event.y) == 'cell':
+        # the user clicked on a cell
+
+        def ok(event):
+            """Change item value."""
+            field_tree_viewer.set(item, column, entry.get())
+            entry.destroy()
+
+        column = field_tree_viewer.identify_column(event.x)  # identify column
+        if column == "#1":
+            return
+        item = field_tree_viewer.identify_row(event.y)  # identify item
+        x, y, width, height = field_tree_viewer.bbox(item, column)
+        value = field_tree_viewer.set(item, column)
+
+    elif field_tree_viewer.identify_region(event.x, event.y) == 'heading1':
+        # the user clicked on a heading
+
+        def ok(event):
+            """Change heading text."""
+            field_tree_viewer.heading(column, text=entry.get())
+            entry.destroy()
+
+        column = field_tree_viewer.identify_column(event.x) # identify column
+        # tree.bbox work sonly with items so we have to get the bbox of the heading differently
+        x, y, width, _ = field_tree_viewer.bbox(field_tree_viewer.get_children('')[0], column) # get x and width (same as the one of any cell in the column)
+        # get vertical coordinates (y1, y2)
+        y2 = y
+        # get bottom coordinate
+        while field_tree_viewer.identify_region(event.x, y2) != 'heading':
+            y2 -= 1
+        # get top coordinate
+        y1 = y2
+        while field_tree_viewer.identify_region(event.x, y1) == 'heading':
+            y1 -= 1
+        height = y2 - y1
+        y = y1
+        value = field_tree_viewer.heading(column, 'text')
+
+    elif field_tree_viewer.identify_region(event.x, event.y) == 'nothing':
+        column = field_tree_viewer.identify_column(event.x) # identify column
+        # check whether we are below the last row:
+        x, y, width, height = field_tree_viewer.bbox(field_tree_viewer.get_children('')[-1], column)
+        if event.y > y:
+
+            def ok(event):
+                """Change item value."""
+                # create item
+                item = field_tree_viewer.insert("", "end", values=("", ""))
+                field_tree_viewer.set(item, column, entry.get())
+                entry.destroy()
+
+            y += height
+            value = ""
+        else:
+            return
+    else:
+        return
+    # display the Entry
+    entry = ttk.Entry(field_tree_viewer)  # create edition entry
+    entry.place(x=x, y=y, width=width, height=height,
+                anchor='nw')  # display entry on top of cell
+    entry.insert(0, value)  # put former value in entry
+    entry.bind('<FocusOut>', lambda e: entry.destroy())
+    entry.bind('<Return>', ok)  # validate with Enter
+    entry.focus_set()
+
+
+# This is used to open the color dialog box under Settings tab.
+def getColor():
+    color = askcolor()
+
+
+# This  is used to open the downloads folder under downloads tab.
+def callback():
+    name = askopenfilename()
+
+
+# The following functions are used to clear display area and URL field when back button is clicked.
+def clear_text():
+    text.delete(1.0, 'end')
+
+
+def clear_entry():
+    e1.delete(0, 'end')
+
+
+def sequence(*functions):
+    def func(*args, **kwargs):
+        return_value = None
+        for function in functions:
+            return_value = function(*args, **kwargs)
+        return return_value
+
+    return func
+
+
+"""As soon as Go button is clicked, the data recieved from the server in form of html code is parsed and displayed
+   in the text display area."""
+
+
+# go button
+def go():
+    lbl.config(image='')
+    url = e1.get()
+    req = urllib.request.Request(url)
+    resp = urllib.request.urlopen(req)
+    respData = resp.read()
+    initial = str(respData)[2:-1]
+    lines = initial.split('\\n')
+    text.insert(INSERT, lines)
+    back.config(relief=RAISED)
+
+
+def selectItem(event):
+    global tv_entity
+    global tv_jurisdiction
+    curItem = states_tree_viewer.focus()
+    curItem = states_tree_viewer.item(curItem, 'values')
+    tv_entity = curItem[0]
+    tv_jurisdiction = curItem[1]
+    tv_jurisdiction = str.replace(tv_jurisdiction, "\n", "", 2)
+    lbl_status_gif.lift()
+    web_crawler()
+    return
+
+
+def web_crawler():
+    web_page = read_ini_config.read_states_link("DEFAULT", tv_jurisdiction)
+    driver = webdriver.Chrome(base_path + '\\chromedriver.exe')
+    driver.get(web_page)
+    s_box = driver.find_element_by_class_name("progressiveLink")
+    s_box.click()
+    s_box = driver.find_element_by_class_name("progressiveLink")
+    s_box.click()
+    s_box = driver.find_element_by_name("searchFormForm:businessName")
+    s_box.send_keys(tv_entity)
+    s_box = driver.find_element_by_name("searchFormForm:searchSubmit")
+    s_box.click()
+
+    from selenium.webdriver.support import expected_conditions as EC
+    wait = WebDriverWait(driver, 20)
+    # wait.until(EC.visibility_of("Business Summary"))
+    e1.insert(1.0, driver.current_url)
+    driver.quit()
+    return
+
+# menubar
+menu = Menu(root)
+root.config(menu=menu)
+subMenu = Menu(menu)
+menu.add_cascade(label="Apps", menu=subMenu)
+subMenu.add_command(label="E1", command=lambda aurl=url1: OpenUrl(aurl))
+subMenu.add_command(label="hCue", command=lambda aurl=url2: OpenUrl(aurl))
+subMenu.add_command(label="Sales Force", command=lambda aurl=url3: OpenUrl(aurl))
+subMenu.add_command(label="eFARMS", command=lambda aurl=url4: OpenUrl(aurl))
+subMenu.add_command(label="Google", command=lambda aurl=url5: OpenUrl(aurl))
+subMenu.add_command(label="GMail", command=lambda aurl=url6: OpenUrl(aurl))
+subMenu.add_separator()
+editMenu = Menu(menu)
+menu.add_cascade(label="Settings", menu=editMenu)
+editMenu.add_command(label="Themes and Colors", command=getColor)
+editMenu.add_command(label="History")
+editMenu.add_command(label="Connect account...")
+editMenu.add_command(label="Exit", command=root.quit)
+editMenu = Menu(menu)
+menu.add_cascade(label="Bookmarks", menu=editMenu)
+editMenu.add_command(label="View")
+editMenu.add_command(label="Add bookmark")
+editMenu = Menu(menu)
+menu.add_cascade(label="Tools", menu=editMenu)
+editMenu.add_command(label="Inspect Element")
+editMenu.add_command(label="Manage Extensions")
+editMenu.add_command(label="Developer Tools")
+editMenu = Menu(menu)
+menu.add_cascade(label="Downloads", menu=editMenu)
+editMenu.add_command(label="Open Downloads Folder", command=callback)
+# Buttons and field
+# declaration
+itiger = PhotoImage(file=base_path + "\\images\\cosmo.png")
+tiger = Label(root, image=itiger)
+back = Button(root, relief=SUNKEN, command=sequence(clear_entry, clear_text))
+iback = PhotoImage(file=base_path + "\\images\\back.png")
+back.config(image=iback)
+fwd = Button(root, relief=SUNKEN)
+ifwd = PhotoImage(file=base_path + "\\images\\fwd.png")
+fwd.config(image=ifwd)
+refresh = Button(root)
+irel = PhotoImage(file=base_path + "\\images\\refresh.png")
+refresh.config(image=irel)
+stop = Button(root)
+istop = PhotoImage(file=base_path + "\\images\\close.png")
+stop.config(image=istop)
+lbl_status_gif = Label(root)
+lbl_status_gif_cont = PhotoImage(file=base_path + "\\images\\statusbar.gif")
+lbl_status_gif.config(image=lbl_status_gif_cont)
+l1 = Label(root, text="URL:")
+e1 = Entry(root, font=("Helvetica", 12))
+go = Button(root, text="Go", command=go)
+text = Text(root, bd=4, yscrollcommand=scrollbar.set)
+scrollbar.config(command=text.yview)
+entity_name_field = Entry(root, font=("Helvetica", 12))
+entity_name_button = Button(root, text="Create Entity List", command=run_state_list)
+entity_name_button_clear = Button(root, text="Clear Entity List")
+
+# treeview design
+states_tree_viewer = ttk.Treeview(root, columns=('Entity', 'Jurisdiction'))
+states_tree_viewer.heading('#1', text='Entity')
+states_tree_viewer.heading('#2', text='Jurisdiction')
+states_tree_viewer.bind("<Double-1>", selectItem)
+states_tree_viewer.pack(side=LEFT)
+
+# edit treeview
+field_tree_viewer = ttk.Treeview(root, show='headings', columns=("1", "2"))
+field_tree_viewer['show'] = 'headings'
+
+field_tree_viewer.column("1", width=450)
+field_tree_viewer.heading('1', text='Field')
+field_tree_viewer.column("2", width=450)
+field_tree_viewer.heading('2', text='Value')
+field_tree_viewer.bind('<1>', edit)
+field_tree_viewer.pack(fill='both', expand=True)
+
+# field constant values
+with open(base_path + "\FieldLists.txt", 'r') as fileHandle:
+    filecontents = fileHandle.readlines()
+    for line in filecontents:
+        field_tree_viewer.insert("", 'end', values=(line, ""))
+
+# placement of widgets
+tiger.place(x=10, y=10, height=80, width=100)
+tiger.lower()
+back.place(x=120, y=30, height=30, width=40)
+fwd.place(x=170, y=30, height=30, width=40)
+refresh.place(x=220, y=30, height=30, width=30)
+l1.place(x=260, y=30, height=30, width=50)
+e1.place(x=300, y=30, height=30, width=900)
+e1.lower()
+stop.place(x=1200, y=30, height=30, width=30)
+go.place(x=1250, y=30, height=30, width=40)
+text.place(x=10, y=100, height=250, width=1320)
+text.place_forget()
+states_tree_viewer.place(x=10, y=100, height=850, width=650)
+states_tree_viewer.lower()
+field_tree_viewer.place(x=660, y=100, height=500, width=900)
+field_tree_viewer.lower()
+entity_name_button.place(x=625, y=65, height=30, width=100)
+entity_name_field.place(x=120, y=65, height=30, width=500)
+entity_name_button_clear.place(x=725, y=65, height=30, width=100)
+lbl_status_gif.place(x=450, y=250, height=500, width=800)
+lbl_status_gif.place_forget()
+im = PhotoImage(file=base_path + "\\images\\im.png")
+lbl = Label(text, image=im)
+lbl.pack()
+
+root.mainloop()
